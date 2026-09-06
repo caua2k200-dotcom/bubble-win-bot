@@ -4,7 +4,7 @@ import random
 from threading import Thread
 
 from flask import Flask
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
 # ============================================================
 # CONFIGURAÇÕES
@@ -12,13 +12,17 @@ from telegram import Bot
 
 TOKEN = os.environ["BOT_TOKEN"]
 CHANNEL = "@bubblewinofc"
+
 LINK = "https://bubblewid.online?ref=s2otaxsb"
+
+IMAGE_URL = "https://i.ibb.co/zVnHgFbS/Whats-App-Image-2026-09-06-at-18-04-29.jpg"
 
 MIN_WAIT = 30 * 60
 MAX_WAIT = 90 * 60
 
 MIN_ATTEMPTS = 1
 MAX_ATTEMPTS = 3
+
 
 # ============================================================
 # SERVIDOR WEB
@@ -38,7 +42,7 @@ def health():
 
 
 # ============================================================
-# ENVIO DE MENSAGEM
+# ENVIA FOTO + MENSAGEM + BOTÃO
 # ============================================================
 
 async def send_message(bot):
@@ -49,18 +53,31 @@ async def send_message(bot):
     else:
         attempt_text = f"{attempts} tentativas"
 
-    message = (
-        "🎮 HORA DE JOGAR!\n\n"
-        f"🔗 {LINK}\n"
-        f"🎯 Tentativas: {attempt_text}"
+    caption = (
+        "🚨 <b>SINAL LIBERADO</b>\n\n"
+        f"🎯 <b>Tentativas: {attempt_text}</b>"
     )
 
-    await bot.send_message(
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "🎮 CLIQUE AQUI PARA JOGAR",
+                url=LINK
+            )
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await bot.send_photo(
         chat_id=CHANNEL,
-        text=message
+        photo=IMAGE_URL,
+        caption=caption,
+        parse_mode="HTML",
+        reply_markup=reply_markup
     )
 
-    print(f"✅ Mensagem enviada! Tentativas: {attempts}")
+    print(f"✅ Sinal enviado! Tentativas: {attempts}")
 
 
 # ============================================================
@@ -73,7 +90,7 @@ async def bot_loop():
     print("🤖 Bubble Win Bot iniciado!")
     print(f"📢 Canal: {CHANNEL}")
 
-    # TESTE: envia uma mensagem imediatamente
+    # Primeira mensagem imediatamente
     try:
         await send_message(bot)
     except Exception as e:
@@ -83,7 +100,7 @@ async def bot_loop():
         wait_seconds = random.randint(MIN_WAIT, MAX_WAIT)
 
         print(
-            f"⏳ Próxima mensagem em "
+            f"⏳ Próximo sinal em "
             f"{wait_seconds / 60:.1f} minutos."
         )
 

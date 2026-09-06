@@ -1,41 +1,64 @@
 import os
 import asyncio
 import random
-from datetime import datetime
+from threading import Thread
 
+from flask import Flask
 from telegram import Bot
 
 # ============================================================
-# CONFIGURAÇÃO
+# CONFIGURAÇÕES
 # ============================================================
 
 TOKEN = os.environ["BOT_TOKEN"]
 CHANNEL = "@bubblewinofc"
 LINK = "https://bubblewid.online?ref=s2otaxsb"
 
-MIN_WAIT = 30 * 60       # 30 minutos
-MAX_WAIT = 90 * 60       # 90 minutos
+MIN_WAIT = 30 * 60  # 30 minutos
+MAX_WAIT = 90 * 60  # 90 minutos
 
 MIN_ATTEMPTS = 1
 MAX_ATTEMPTS = 3
 
 
 # ============================================================
-# ENVIA UMA MENSAGEM
+# SERVIDOR WEB PARA O RENDER / UPTIMEROBOT
+# ============================================================
+
+app = Flask(__name__)
+
+
+@app.route("/")
+def home():
+    return "Bubble Win Bot está online! 🤖", 200
+
+
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+
+# ============================================================
+# ENVIA MENSAGEM
 # ============================================================
 
 async def send_message(bot):
     attempts = random.randint(MIN_ATTEMPTS, MAX_ATTEMPTS)
 
     if attempts == 1:
-        attempt_text = "1 tentativa"
+        text = "1 tentativa"
     else:
-        attempt_text = f"{attempts} tentativas"
+        text = f"{attempts} tentativas"
 
     message = (
         "🎮 HORA DE JOGAR!\n\n"
         f"🔗 {LINK}\n"
-        f"🎯 Tentativas: {attempt_text}"
+        f"🎯 Tentativas: {text}"
     )
 
     await bot.send_message(
@@ -44,41 +67,49 @@ async def send_message(bot):
         disable_web_page_preview=False
     )
 
-    print(
-        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-        f"Mensagem enviada | {attempts} tentativa(s)"
-    )
+    print(f"Mensagem enviada: {attempts} tentativa(s)")
 
 
 # ============================================================
-# LOOP PRINCIPAL
+# LOOP DO BOT
 # ============================================================
 
-async def main():
+async def bot_loop():
     bot = Bot(token=TOKEN)
 
-    print("🤖 Bubble Win Bot iniciado!")
-    print(f"📢 Canal: {CHANNEL}")
+    print("🤖 Bot iniciado!")
+    print("📢 Canal:", CHANNEL)
     print("⏱️ Intervalo: 30–90 minutos")
     print("🎯 Tentativas: 1–3")
 
-    # Envia a primeira mensagem imediatamente.
+    # Primeira mensagem imediatamente
     await send_message(bot)
 
     while True:
         wait_seconds = random.randint(MIN_WAIT, MAX_WAIT)
 
-        minutes = wait_seconds / 60
-
         print(
             f"⏳ Próxima mensagem em "
-            f"{minutes:.1f} minutos."
+            f"{wait_seconds / 60:.1f} minutos."
         )
 
         await asyncio.sleep(wait_seconds)
 
-        await send_message(bot)
+        try:
+            await send_message(bot)
+        except Exception as e:
+            print("Erro ao enviar mensagem:", e)
 
+
+# ============================================================
+# INICIALIZAÇÃO
+# ============================================================
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    web_thread = Thread(
+        target=run_web_server,
+        daemon=True
+    )
+    web_thread.start()
+
+    asyncio.run(bot_loop())

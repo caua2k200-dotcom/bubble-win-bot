@@ -14,15 +14,14 @@ TOKEN = os.environ["BOT_TOKEN"]
 CHANNEL = "@bubblewinofc"
 LINK = "https://bubblewid.online?ref=s2otaxsb"
 
-MIN_WAIT = 30 * 60  # 30 minutos
-MAX_WAIT = 90 * 60  # 90 minutos
+MIN_WAIT = 30 * 60
+MAX_WAIT = 90 * 60
 
 MIN_ATTEMPTS = 1
 MAX_ATTEMPTS = 3
 
-
 # ============================================================
-# SERVIDOR WEB PARA O RENDER / UPTIMEROBOT
+# SERVIDOR WEB
 # ============================================================
 
 app = Flask(__name__)
@@ -38,36 +37,30 @@ def health():
     return "OK", 200
 
 
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-
 # ============================================================
-# ENVIA MENSAGEM
+# ENVIO DE MENSAGEM
 # ============================================================
 
 async def send_message(bot):
     attempts = random.randint(MIN_ATTEMPTS, MAX_ATTEMPTS)
 
     if attempts == 1:
-        text = "1 tentativa"
+        attempt_text = "1 tentativa"
     else:
-        text = f"{attempts} tentativas"
+        attempt_text = f"{attempts} tentativas"
 
     message = (
         "🎮 HORA DE JOGAR!\n\n"
         f"🔗 {LINK}\n"
-        f"🎯 Tentativas: {text}"
+        f"🎯 Tentativas: {attempt_text}"
     )
 
     await bot.send_message(
         chat_id=CHANNEL,
-        text=message,
-        disable_web_page_preview=False
+        text=message
     )
 
-    print(f"Mensagem enviada: {attempts} tentativa(s)")
+    print(f"✅ Mensagem enviada! Tentativas: {attempts}")
 
 
 # ============================================================
@@ -77,13 +70,14 @@ async def send_message(bot):
 async def bot_loop():
     bot = Bot(token=TOKEN)
 
-    print("🤖 Bot iniciado!")
-    print("📢 Canal:", CHANNEL)
-    print("⏱️ Intervalo: 30–90 minutos")
-    print("🎯 Tentativas: 1–3")
+    print("🤖 Bubble Win Bot iniciado!")
+    print(f"📢 Canal: {CHANNEL}")
 
-    # Primeira mensagem imediatamente
-    await send_message(bot)
+    # TESTE: envia uma mensagem imediatamente
+    try:
+        await send_message(bot)
+    except Exception as e:
+        print(f"❌ Erro ao enviar mensagem: {e}")
 
     while True:
         wait_seconds = random.randint(MIN_WAIT, MAX_WAIT)
@@ -98,18 +92,29 @@ async def bot_loop():
         try:
             await send_message(bot)
         except Exception as e:
-            print("Erro ao enviar mensagem:", e)
+            print(f"❌ Erro ao enviar mensagem: {e}")
 
 
 # ============================================================
-# INICIALIZAÇÃO
+# INICIA O BOT EM SEGUNDO PLANO
+# ============================================================
+
+def start_bot():
+    asyncio.run(bot_loop())
+
+
+bot_thread = Thread(
+    target=start_bot,
+    daemon=True
+)
+
+bot_thread.start()
+
+
+# ============================================================
+# SERVIDOR FLASK
 # ============================================================
 
 if __name__ == "__main__":
-    web_thread = Thread(
-        target=run_web_server,
-        daemon=True
-    )
-    web_thread.start()
-
-    asyncio.run(bot_loop())
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
